@@ -1,0 +1,26 @@
+PLACEABLE DEPOSITS AND ANOMALIES - V2 TEST
+
+1. Replace your existing "Placeable deposits and anomalies" mod folder with this one.
+2. Start/restart Surviving Mars: Relaunched.
+3. Enable the mod in Mod Manager.
+4. Load a colony.
+5. Open Build Menu > Storages.
+6. Look for "Map Placement" near the end of the Storages category.
+
+If you already have the Mod Editor open:
+- Reload the mod, or close/reopen the editor.
+- This V2 also registers on ModsReloaded, so a full game restart should normally
+  not be required, but a restart is the cleanest test.
+
+FIRST TESTS
+- Water Deposit
+- Vista
+- Research Site
+- Research Anomaly
+
+The log should contain lines beginning with:
+[Placeable deposits and anomalies]
+
+If the category still does not appear, send a screenshot of the Mod Editor log
+right after reloading this version. The new diagnostic log lines will tell us
+whether registration ran and which game object/preset was missing.
