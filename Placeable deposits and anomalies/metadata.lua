@@ -3,8 +3,8 @@ return PlaceObj('ModDef', {
 	'description', "Adds in-game placement tools for resource deposits, anomalies, Vistas, and Research Sites.",
 	'id', "Mde5tLv",
 	'author', "Spagbotgames",
-	'version_minor', 4,
-	'version', 5,
+	'version_minor', 5,
+	'version', 6,
 	'lua_revision', 350453,
 	'saved_with_revision', 396349,
 	'code', {

@@ -1,0 +1,45 @@
+PLACEABLE DEPOSITS AND ANOMALIES - V5
+
+WHAT V5 FIXES
+-------------
+1. Replaces ActiveMapID with Relaunched's CurrentMap object.
+2. Stops calling SpawnDeposit() before PlaceDeposit().
+   PlaceDeposit() already spawns + positions the real deposit itself.
+3. Removes the temporary placement building before placing the real marker.
+   This is especially important for Vista/Research Site placement.
+4. Keeps the working V4 Relaunched Data/BuildingTemplate + generated-class structure.
+
+INSTALL
+-------
+1. Fully close Surviving Mars: Relaunched.
+2. Remove V4 from the Mods folder.
+3. Extract this ZIP and install the "Placeable deposits and anomalies" folder.
+4. Start the game and enable it.
+5. Load a colony.
+6. Go to Storages -> Map Placement.
+
+TEST ORDER
+----------
+1. Water Deposit
+   - Should place with NO ActiveMapID popup.
+   - Should place with NO IsPointSane popup.
+2. Research Anomaly
+3. Vista
+4. Research Site
+
+EXPECTED LOGS
+-------------
+[Placeable deposits and anomalies] V5 code loaded
+[Placeable deposits and anomalies] Converting MPT_Place_Water
+[Placeable deposits and anomalies] Placed resource deposit: Water
+
+Vista:
+[Placeable deposits and anomalies] Converting MPT_Place_Vista
+[Placeable deposits and anomalies] Placed map effect: BeautyEffectDeposit
+
+Research Site:
+[Placeable deposits and anomalies] Converting MPT_Place_ResearchSite
+[Placeable deposits and anomalies] Placed map effect: ResearchEffectDeposit
+
+If Vista or Research Site still fails, send the exact line beginning:
+EffectDepositMarker:PlaceDeposit ERROR
