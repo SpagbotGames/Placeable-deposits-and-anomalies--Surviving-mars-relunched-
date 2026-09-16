@@ -1,7 +1,7 @@
--- Placeable deposits and anomalies - V5
+-- Placeable deposits and anomalies - V10 (Relaunched 1.1.0 hotfix)
 -- Surviving Mars: Relaunched
 --
--- Fixes from V4:
+-- Compatibility notes:
 --   1. Relaunched uses CurrentMap (a map object), not ActiveMapID.
 --   2. Do NOT call SpawnDeposit() manually. DepositMarker:PlaceDeposit()
 --      already calls SpawnDeposit(), registers the deposit, and positions it.
@@ -202,18 +202,10 @@ local function PlaceEffect(pos, deposit_type)
 	end
 
 	if IsValid(deposit) then
+		-- In Relaunched 1.1.0 the effect deposit initializes its own visuals
+		-- during PlaceDeposit/GameInit. Calling AdjustVisuals() a second time
+		-- can cause a native Render Task access violation, so do not touch it.
 		Reveal(deposit)
-
-		-- Effect deposits override GameInit in the reference implementation,
-		-- so refreshing their visuals once AFTER PlaceDeposit has assigned a
-		-- valid position is safe and avoids initializing visuals at InvalidPos.
-		if deposit.AdjustVisuals then
-			local vok, verr = pcall(deposit.AdjustVisuals, deposit)
-			if not vok then
-				Log(tostring(deposit_type) .. ":AdjustVisuals ERROR: " .. tostring(verr))
-			end
-		end
-
 		Log("Placed map effect: " .. tostring(deposit_type))
 	else
 		Log("No map effect was returned for " .. tostring(deposit_type))
@@ -298,8 +290,8 @@ local function RegisterCategory()
 		PlaceObj("BuildMenuSubcategory", {
 			build_pos = 99,
 			category = "Storages",
-			description = T(0, "Place deposits, anomalies, Vistas, and Research Sites directly on the map."),
-			display_name = T(0, "Map Placement"),
+			description = Untranslated("Place deposits, anomalies, Vistas, and Research Sites directly on the map."),
+			display_name = Untranslated("Map Placement"),
 			group = "Default",
 			icon = "UI/Icons/Buildings/res_all.tga",
 			category_name = CATEGORY_ID,

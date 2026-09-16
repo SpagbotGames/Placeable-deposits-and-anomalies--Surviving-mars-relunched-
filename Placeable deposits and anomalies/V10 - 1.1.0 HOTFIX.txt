@@ -1,0 +1,16 @@
+Placeable deposits and anomalies - V10 / Relaunched 1.1.0 hotfix
+
+Changes:
+- Replaced all mod-owned T(0, "...") strings with Untranslated("...").
+  Patch 1.1.0 can resolve translation ID 0 to an existing game string.
+- Removed the manual deposit:AdjustVisuals() call after EffectDepositMarker:PlaceDeposit(true).
+  In 1.1.0 the deposit initializes its visuals itself; a second visual init can cause
+  a native Render Task access violation / crash to desktop.
+- Kept Concrete deposits at 2500.
+- Kept 62x62 custom icon files. Icon alignment is not addressed by this hotfix.
+
+Recommended tests:
+1. Place Water / Metals / Concrete.
+2. Place all anomaly types.
+3. Repeatedly place Vista and Research Site (these were the native-crash path).
+4. Confirm all menu names/descriptions show the mod text rather than unrelated game text.

@@ -1,5 +1,6 @@
 return {
 	PlaceObj('ModItemCode', {
+		'name', "Script",
 		'CodeFileName', "Code/Script.lua",
 	}),
 	PlaceObj('ModItemRef', {1} --[[BuildingTemplate  MPT_Place_Concrete]]),
