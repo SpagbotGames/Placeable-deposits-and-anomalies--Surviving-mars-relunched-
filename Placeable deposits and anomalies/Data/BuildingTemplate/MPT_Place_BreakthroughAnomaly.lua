@@ -14,7 +14,7 @@ PlaceObj('ModItemBuildingTemplate', {
 	'display_name_pl', T(0, "Breakthrough Anomalies"),
 	'description', T(0, "Place a Breakthrough anomaly."),
 	'build_category', "MPT_MapPlacement",
-	'display_icon', "UI/Icons/Anomaly_Breakthrough.tga",
+	'display_icon', "Mod/Mde5tLv/UI/MapPlacement/anomaly_breakthrough.png",
 	'build_pos', 12,
 	'entity', "SensorTower",
 })

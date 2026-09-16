@@ -14,7 +14,7 @@ PlaceObj('ModItemBuildingTemplate', {
 	'display_name_pl', T(0, "Research Anomalies"),
 	'description', T(0, "Place an anomaly that grants research when analyzed."),
 	'build_category', "MPT_MapPlacement",
-	'display_icon', "UI/Icons/Anomaly_Research.tga",
+	'display_icon', "Mod/Mde5tLv/UI/MapPlacement/anomaly_research.png",
 	'build_pos', 10,
 	'entity', "SensorTower",
 })

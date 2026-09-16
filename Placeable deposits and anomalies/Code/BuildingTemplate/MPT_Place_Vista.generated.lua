@@ -15,7 +15,7 @@ DefineClass.MPT_Place_Vista = {
 	display_name_pl = T(0, "Vistas"),
 	description = T(0, "Place a Vista map bonus."),
 	build_category = "MPT_MapPlacement",
-	display_icon = "UI/Icons/Buildings/dome.tga",
+	display_icon = "Mod/Mde5tLv/UI/MapPlacement/vista.png",
 	build_pos = 20,
 	entity = "SensorTower",
 }

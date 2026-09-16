@@ -24,22 +24,27 @@ local definitions = {
 	MPT_Place_Concrete = {
 		kind = "terrain_resource",
 		resource = "Concrete",
+		amount = 2500 * RESOURCE_SCALE,
 	},
 	MPT_Place_Water = {
 		kind = "subsurface_resource",
 		resource = "Water",
+		amount = 5000 * RESOURCE_SCALE,
 	},
 	MPT_Place_Metals = {
 		kind = "subsurface_resource",
 		resource = "Metals",
+		amount = 5000 * RESOURCE_SCALE,
 	},
 	MPT_Place_RareMetals = {
 		kind = "subsurface_resource",
 		resource = "PreciousMetals",
+		amount = 5000 * RESOURCE_SCALE,
 	},
 	MPT_Place_ExoticMinerals = {
 		kind = "subsurface_resource",
 		resource = "PreciousMinerals",
+		amount = 5000 * RESOURCE_SCALE,
 	},
 
 	MPT_Place_ResearchAnomaly = {
@@ -116,7 +121,7 @@ local function Reveal(obj)
 	end
 end
 
-local function PlaceResource(pos, resource, terrain_resource)
+local function PlaceResource(pos, resource, terrain_resource, amount)
 	local marker_class = terrain_resource and "TerrainDepositMarker" or "SubsurfaceDepositMarker"
 	local marker = NewOnCurrentMap(marker_class)
 
@@ -128,7 +133,7 @@ local function PlaceResource(pos, resource, terrain_resource)
 	marker:SetPos(pos)
 	marker.resource = resource
 	marker.grade = "Very High"
-	marker.max_amount = DEPOSIT_AMOUNT
+	marker.max_amount = amount or DEPOSIT_AMOUNT
 	marker.revealed = true
 
 	if not terrain_resource then
@@ -259,9 +264,9 @@ local function ConvertProxy(obj)
 	Sleep(1)
 
 	if def.kind == "terrain_resource" then
-		PlaceResource(pos, def.resource, true)
+		PlaceResource(pos, def.resource, true, def.amount)
 	elseif def.kind == "subsurface_resource" then
-		PlaceResource(pos, def.resource, false)
+		PlaceResource(pos, def.resource, false, def.amount)
 	elseif def.kind == "anomaly" then
 		PlaceAnomaly(pos, def.tech_action)
 	elseif def.kind == "effect" then

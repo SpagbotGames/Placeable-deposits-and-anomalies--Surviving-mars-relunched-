@@ -14,7 +14,7 @@ PlaceObj('ModItemBuildingTemplate', {
 	'display_name_pl', T(0, "Exotic Minerals Deposits"),
 	'description', T(0, "Place a subsurface Exotic Minerals deposit."),
 	'build_category', "MPT_MapPlacement",
-	'display_icon', "UI/Icons/Buildings/res_all.tga",
+	'display_icon', "Mod/Mde5tLv/UI/MapPlacement/exotic_minerals.png",
 	'build_pos', 5,
 	'entity', "SensorTower",
 })

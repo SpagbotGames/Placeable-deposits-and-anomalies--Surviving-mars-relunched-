@@ -15,7 +15,7 @@ DefineClass.MPT_Place_ResourceAnomaly = {
 	display_name_pl = T(0, "Resource Anomalies"),
 	description = T(0, "Place a resource anomaly."),
 	build_category = "MPT_MapPlacement",
-	display_icon = "UI/Icons/Anomaly_Event.tga",
+	display_icon = "Mod/Mde5tLv/UI/MapPlacement/anomaly_resource.png",
 	build_pos = 13,
 	entity = "SensorTower",
 }

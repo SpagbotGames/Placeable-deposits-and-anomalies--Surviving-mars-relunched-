@@ -1,0 +1,4 @@
+V6 changes:
+- Concrete deposit amount reduced to 2500.
+- Replaced build menu icons with custom small icons that match the placed-map symbols more closely.
+- Anomaly icons now use custom smaller icons for proper scaling.

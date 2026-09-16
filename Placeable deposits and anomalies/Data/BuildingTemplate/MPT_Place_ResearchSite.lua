@@ -14,7 +14,7 @@ PlaceObj('ModItemBuildingTemplate', {
 	'display_name_pl', T(0, "Research Sites"),
 	'description', T(0, "Place a Research Site map bonus."),
 	'build_category', "MPT_MapPlacement",
-	'display_icon', "UI/Icons/Buildings/research.tga",
+	'display_icon', "Mod/Mde5tLv/UI/MapPlacement/research_site.png",
 	'build_pos', 21,
 	'entity', "SensorTower",
 })

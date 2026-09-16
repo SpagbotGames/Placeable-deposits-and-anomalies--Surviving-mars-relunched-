@@ -14,7 +14,7 @@ PlaceObj('ModItemBuildingTemplate', {
 	'display_name_pl', T(0, "Metals Deposits"),
 	'description', T(0, "Place a subsurface Metals deposit."),
 	'build_category', "MPT_MapPlacement",
-	'display_icon', "UI/Icons/Buildings/res_all.tga",
+	'display_icon', "Mod/Mde5tLv/UI/MapPlacement/metals.png",
 	'build_pos', 3,
 	'entity', "SensorTower",
 })

@@ -14,7 +14,7 @@ PlaceObj('ModItemBuildingTemplate', {
 	'display_name_pl', T(0, "Water Deposits"),
 	'description', T(0, "Place a subsurface Water deposit."),
 	'build_category', "MPT_MapPlacement",
-	'display_icon', "UI/Icons/Buildings/res_all.tga",
+	'display_icon', "Mod/Mde5tLv/UI/MapPlacement/water.png",
 	'build_pos', 2,
 	'entity', "SensorTower",
 })

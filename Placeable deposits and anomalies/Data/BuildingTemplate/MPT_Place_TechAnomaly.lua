@@ -14,7 +14,7 @@ PlaceObj('ModItemBuildingTemplate', {
 	'display_name_pl', T(0, "Technology Anomalies"),
 	'description', T(0, "Place an anomaly that unlocks technology when analyzed."),
 	'build_category', "MPT_MapPlacement",
-	'display_icon', "UI/Icons/Anomaly_Tech.tga",
+	'display_icon', "Mod/Mde5tLv/UI/MapPlacement/anomaly_tech.png",
 	'build_pos', 11,
 	'entity', "SensorTower",
 })
