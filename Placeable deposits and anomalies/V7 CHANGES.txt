@@ -1,3 +1,0 @@
-V7 icon fix:
-- Replaced transparent icons with full blue hex-style menu icons so they display correctly even when not hovered.
-- Kept Concrete deposit amount at 2500.

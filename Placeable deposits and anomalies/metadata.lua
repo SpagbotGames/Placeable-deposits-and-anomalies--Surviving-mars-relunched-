@@ -1,10 +1,13 @@
 return PlaceObj('ModDef', {
 	'title', "Placeable deposits and anomalies",
 	'description', "Adds in-game placement tools for resource deposits, anomalies, Vistas, and Research Sites.",
+	'short_description', "Adds in-game placement tools for resource deposits, anomalies, Vistas, and Research Sites.",
+	'image', "Mod/Mde5tLv/Images/Screenshot_4.png",
+	'last_changes', "Added the ability to place down deposits, anomalies, vistas, and research sites",
 	'id', "Mde5tLv",
 	'author', "Spagbotgames",
-	'version_minor', 8,
-	'version', 9,
+	'version_major', 1,
+	'version', 14,
 	'lua_revision', 350453,
 	'saved_with_revision', 396349,
 	'code', {
@@ -22,7 +25,8 @@ return PlaceObj('ModDef', {
 		"Code/BuildingTemplate/MPT_Place_ResearchSite.generated.lua",
 	},
 	'has_data', true,
-	'saved', 1787335830,
+	'saved', 1787343279,
+	'code_hash', 6620236897179512974,
 	'affected_resources', {
 		PlaceObj('ModResourcePreset', {
 			'Class', "BuildingTemplate",
@@ -80,6 +84,9 @@ return PlaceObj('ModDef', {
 			'ClassDisplayName', "BuildingTemplate",
 		}),
 	},
+	'pdx_id', 156169,
+	'pdx_version', "1",
+	'steam_id', "3787619783",
 	'TagBuildings', true,
 	'TagTools', true,
 })
