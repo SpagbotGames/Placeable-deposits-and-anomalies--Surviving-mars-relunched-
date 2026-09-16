@@ -1,406 +1,302 @@
--- Placeable deposits and anomalies
+-- Placeable deposits and anomalies - V3
 -- Surviving Mars: Relaunched
 --
--- Adds a Map Placement submenu under Storages and lets the player place
--- deposits, anomalies, Vistas, and Research Sites with the normal build cursor.
+-- IMPORTANT:
+-- The build-menu entries themselves are real ModItemBuildingTemplate objects
+-- defined in items.lua.  This file only provides the Building-derived class
+-- that those templates instantiate and converts it into the requested map
+-- object after placement.
 
-local CATEGORY_ID = "MPT_MapPlacement"
-local CATEGORY_NAME = "Map Placement"
-
+local MOD_TAG = "[Placeable deposits and anomalies] "
 local DEPOSIT_AMOUNT = 5000 * (const.ResourceScale or 1000)
-local VISTA_COMFORT = 25 * 1000
-local RESEARCH_SITE_PERCENT = 50
-local ANOMALY_RESOURCE_AMOUNT = 50 * (const.ResourceScale or 1000)
 
-local function MPT_Log(text)
+local function Log(text)
 	if ModLog then
-		ModLog("[Placeable deposits and anomalies] " .. text)
+		ModLog(MOD_TAG .. tostring(text))
 	end
 end
 
--- These are the same marker families the game uses to turn map markers into
--- real deposits/effects. Adding Building as a parent lets the normal build
--- placement controller place them for us.
-DefineClass.MPT_SubsurfaceDepositMarker = {
-	__parents = {
-		"SubsurfaceDepositMarker",
-		"Building",
+local tools = {
+	MPT_Place_Concrete = {
+		kind = "resource",
+		marker = "TerrainDepositMarker",
+		resource = "Concrete",
 	},
-	grade = "Very High",
-	instant_build = true,
-}
-
-DefineClass.MPT_TerrainDepositMarker = {
-	__parents = {
-		"TerrainDepositMarker",
-		"Building",
+	MPT_Place_Water = {
+		kind = "resource",
+		marker = "SubsurfaceDepositMarker",
+		resource = "Water",
+		depth_layer = 1,
 	},
-	grade = "Very High",
-	instant_build = true,
-}
-
-DefineClass.MPT_EffectDepositMarker = {
-	__parents = {
-		"EffectDepositMarker",
-		"Building",
+	MPT_Place_Metals = {
+		kind = "resource",
+		marker = "SubsurfaceDepositMarker",
+		resource = "Metals",
+		depth_layer = 1,
 	},
-	instant_build = true,
-}
-
-DefineClass.MPT_SubsurfaceAnomalyMarker = {
-	__parents = {
-		"SubsurfaceAnomalyMarker",
-		"Building",
+	MPT_Place_RareMetals = {
+		kind = "resource",
+		marker = "SubsurfaceDepositMarker",
+		resource = "PreciousMetals",
+		depth_layer = 1,
 	},
-	instant_build = true,
+	MPT_Place_ExoticMinerals = {
+		kind = "resource",
+		marker = "SubsurfaceDepositMarker",
+		resource = "PreciousMinerals",
+		depth_layer = 1,
+	},
+
+	MPT_Place_ResearchAnomaly = {
+		kind = "anomaly",
+		tech_action = "complete",
+	},
+	MPT_Place_TechAnomaly = {
+		kind = "anomaly",
+		tech_action = "unlock",
+	},
+	MPT_Place_BreakthroughAnomaly = {
+		kind = "anomaly",
+		tech_action = "breakthrough",
+	},
+	MPT_Place_ResourceAnomaly = {
+		kind = "anomaly",
+		tech_action = "resources",
+	},
+
+	MPT_Place_Vista = {
+		kind = "effect",
+		deposit_type = "BeautyEffectDeposit",
+	},
+	MPT_Place_ResearchSite = {
+		kind = "effect",
+		deposit_type = "ResearchEffectDeposit",
+	},
 }
 
--- BuildingTemplate IDs are deliberately based on the class name. The game
--- stores the template ID in fx_actor_class, which gives us an easy lookup for
--- what the placed marker should become.
-local deposit_lookup = {
-	MPT_SubsurfaceDepositMarker_Metals = "Metals",
-	MPT_SubsurfaceDepositMarker_PreciousMetals = "PreciousMetals",
-	MPT_SubsurfaceDepositMarker_Water = "Water",
-	MPT_SubsurfaceDepositMarker_PreciousMinerals = "PreciousMinerals",
-	MPT_TerrainDepositMarker_Concrete = "Concrete",
-
-	MPT_EffectDepositMarker_Vista = "BeautyEffectDeposit",
-	MPT_EffectDepositMarker_ResearchSite = "ResearchEffectDeposit",
-
-	MPT_SubsurfaceAnomalyMarker_Breakthrough = "breakthrough",
-	MPT_SubsurfaceAnomalyMarker_Tech = "unlock",
-	MPT_SubsurfaceAnomalyMarker_Research = "complete",
-	MPT_SubsurfaceAnomalyMarker_Resources = "resources",
-}
-
-local function GameInit_Resource(self)
-	self.resource = deposit_lookup[self.fx_actor_class]
-	if not self.resource then
-		MPT_Log("Unknown resource template: " .. tostring(self.fx_actor_class))
-		self:delete()
+local function RevealObject(obj)
+	if not IsValid(obj) then
 		return
 	end
-
-	local deposit = self:SpawnDeposit()
-	if not deposit then
-		MPT_Log("SpawnDeposit failed for " .. tostring(self.resource))
-		self:delete()
-		return
-	end
-
-	deposit:SetPos(self:GetVisualPos())
-
-	if deposit.resource ~= "Concrete" and deposit.SetRevealed then
-		deposit:SetRevealed(true)
-	elseif deposit.resource ~= "Concrete" then
-		deposit.revealed = true
-	end
-
-	if deposit.resource ~= "Concrete" then
-		deposit.amount = DEPOSIT_AMOUNT
-	end
-	deposit.max_amount = DEPOSIT_AMOUNT
-
-	MPT_Log("Placed " .. tostring(self.resource) .. " deposit")
-	self:delete()
-end
-
-MPT_SubsurfaceDepositMarker.GameInit = GameInit_Resource
-MPT_TerrainDepositMarker.GameInit = GameInit_Resource
-
-local function GameInit_Effect(self)
-	self.deposit_type = deposit_lookup[self.fx_actor_class]
-	if not self.deposit_type then
-		MPT_Log("Unknown effect template: " .. tostring(self.fx_actor_class))
-		self:delete()
-		return
-	end
-
-	local deposit = self:SpawnDeposit()
-	if not deposit then
-		MPT_Log("SpawnDeposit failed for " .. tostring(self.deposit_type))
-		self:delete()
-		return
-	end
-
-	deposit:SetPos(self:GetVisualPos())
-	if deposit.SetRevealed then
-		deposit:SetRevealed(true)
+	if obj.SetRevealed then
+		obj:SetRevealed(true)
 	else
-		deposit.revealed = true
+		obj.revealed = true
 	end
-
-	if self.deposit_type == "ResearchEffectDeposit" then
-		deposit.research_increase = RESEARCH_SITE_PERCENT
-		if deposit.modifier then
-			deposit.modifier.percent = RESEARCH_SITE_PERCENT
-		end
-	elseif self.deposit_type == "BeautyEffectDeposit" then
-		deposit.comfort_increase = VISTA_COMFORT
-		if deposit.modifier then
-			deposit.modifier.amount = VISTA_COMFORT
-		end
+	if obj.PickVisibilityState then
+		obj:PickVisibilityState()
 	end
-
-	MPT_Log("Placed " .. tostring(self.deposit_type))
-	self:delete()
 end
 
-MPT_EffectDepositMarker.GameInit = GameInit_Effect
+local function GetMapId(obj)
+	-- Placement happens on the active map.  GetMapID is used when available
+	-- so this also behaves correctly on non-surface maps.
+	if obj and obj.GetMapID then
+		local id = obj:GetMapID()
+		if id then
+			return id
+		end
+	end
+	return ActiveMapID
+end
 
-local storable_resources = {
-	"Concrete",
-	"Electronics",
-	"Food",
-	"Fuel",
-	"MachineParts",
-	"Metals",
-	"Polymers",
-	"PreciousMetals",
-}
-
-local function GameInit_Anomaly(self)
-	self.tech_action = deposit_lookup[self.fx_actor_class]
-	if not self.tech_action then
-		MPT_Log("Unknown anomaly template: " .. tostring(self.fx_actor_class))
-		self:delete()
+local function NewMarker(class_name, map_id)
+	if not class_name then
+		return
+	end
+	if g_Classes and not g_Classes[class_name] then
+		Log("Missing game class: " .. class_name)
 		return
 	end
 
-	local deposit = self:SpawnDeposit()
-	if not deposit then
-		MPT_Log("SpawnDeposit failed for anomaly " .. tostring(self.tech_action))
-		self:delete()
-		return
+	if PlaceObjectIn and map_id then
+		return PlaceObjectIn(class_name, map_id)
 	end
-
-	deposit:SetPos(self:GetVisualPos())
-	if deposit.SetRevealed then
-		deposit:SetRevealed(true)
-	else
-		deposit.revealed = true
+	if PlaceObject then
+		return PlaceObject(class_name)
 	end
-
-	if self.tech_action == "breakthrough" then
-		if UIColony and UIColony.GetUnregisteredBreakthroughs then
-			local breakthroughs = UIColony:GetUnregisteredBreakthroughs()
-			if breakthroughs and #breakthroughs > 0 then
-				deposit.breakthrough_tech = table.rand(breakthroughs)
-			end
-		end
-	elseif self.tech_action == "resources" then
-		deposit.granted_resource = table.rand(storable_resources)
-		deposit.granted_amount = ANOMALY_RESOURCE_AMOUNT
-	end
-
-	MPT_Log("Placed anomaly: " .. tostring(self.tech_action))
-	self:delete()
 end
 
-MPT_SubsurfaceAnomalyMarker.GameInit = GameInit_Anomaly
-
-local function AddTemplate(obj, params)
-	if not obj then
-		MPT_Log("Skipped missing source object for " .. tostring(params and params.deposit_type))
-		return
-	end
-
-	local description = obj.description
-	local display_icon = params.display_icon or obj.display_icon
-	local display_name = obj.display_name
-
-	if params.display_name then
-		display_name = T(0, params.display_name)
-	end
-	if params.description then
-		description = T(0, params.description)
-	end
-
-	PlaceObj("BuildingTemplate", {
-		"Id", params.class .. params.deposit_type,
-		"template_class", params.class,
-		"display_name", display_name,
-		"display_name_pl", display_name,
-		"description", description or T(0, "Place this map object."),
-		"display_icon", display_icon,
-		"disabled_entity", obj.disabled_entity,
-		"entity", obj.entity,
-		"build_pos", params.build_pos,
-		"build_category", CATEGORY_ID,
-		"Group", CATEGORY_ID,
-		"instant_build", true,
-		"build_points", 0,
-		"construction_cost_Concrete", 0,
-		"construction_cost_Metals", 0,
-		"construction_cost_Polymers", 0,
-		"construction_cost_Electronics", 0,
-		"construction_cost_MachineParts", 0,
-		"dome_forbidden", true,
-		"on_off_button", false,
-		"prio_button", false,
-		"count_as_building", false,
-		"disabled_in_environment1", "",
-		"disabled_in_environment2", "",
-		"disabled_in_environment3", "",
-		"disabled_in_environment4", "",
-	})
-end
-
-local function SetupBuildMenu()
-	if not BuildMenuSubcategories or not BuildingTemplates then
+local function PlaceResource(tool, pos, map_id)
+	local marker = NewMarker(tool.marker, map_id)
+	if not IsValid(marker) then
+		Log("Could not create " .. tostring(tool.marker))
 		return false
 	end
 
-	if not BuildMenuSubcategories[CATEGORY_ID] then
-		PlaceObj("BuildMenuSubcategory", {
-			build_pos = 99,
-			category = "Storages",
-			description = T(0, "Place resource deposits, anomalies, Vistas, and Research Sites directly on the map."),
-			display_name = T(0, CATEGORY_NAME),
-			group = "Default",
-			icon = "UI/Icons/Buildings/res_all.tga",
-			category_name = CATEGORY_ID,
-			id = CATEGORY_ID,
-		})
-		MPT_Log("Registered Map Placement build-menu category")
+	marker:SetPos(pos)
+	marker.resource = tool.resource
+	marker.grade = "Very High"
+	marker.max_amount = DEPOSIT_AMOUNT
+	marker.revealed = true
+
+	if tool.depth_layer then
+		marker.depth_layer = tool.depth_layer
 	end
 
-	-- If this exists, the rest were already registered during this class pass.
-	if BuildingTemplates.MPT_SubsurfaceDepositMarker_Water then
-		if RefreshXBuildMenu then
-			RefreshXBuildMenu()
-		end
+	-- This follows the native marker workflow used by the game.  Some marker
+	-- revisions need SpawnDeposit before PlaceDeposit, while others can use
+	-- PlaceDeposit directly, so support both.
+	local spawned
+	if marker.SpawnDeposit then
+		spawned = marker:SpawnDeposit()
+	end
+
+	local deposit
+	if marker.PlaceDeposit then
+		deposit = marker:PlaceDeposit()
+	end
+	deposit = deposit or spawned
+
+	if IsValid(deposit) then
+		RevealObject(deposit)
+		Log("Placed resource deposit: " .. tostring(tool.resource))
 		return true
 	end
 
-	-- Resource deposits
-	AddTemplate(TerrainDepositConcrete, {
-		class = "MPT_TerrainDepositMarker",
-		deposit_type = "_Concrete",
-		build_pos = 1,
-		display_name = "Concrete Deposit",
-		description = "Place a mineable Concrete deposit.",
-	})
-
-	AddTemplate(SubsurfaceDepositWater, {
-		class = "MPT_SubsurfaceDepositMarker",
-		deposit_type = "_Water",
-		build_pos = 2,
-		display_name = "Water Deposit",
-		description = "Place a subsurface Water deposit.",
-	})
-
-	AddTemplate(SubsurfaceDepositMetals, {
-		class = "MPT_SubsurfaceDepositMarker",
-		deposit_type = "_Metals",
-		build_pos = 3,
-		display_name = "Metals Deposit",
-		description = "Place a subsurface Metals deposit.",
-	})
-
-	AddTemplate(SubsurfaceDepositPreciousMetals, {
-		class = "MPT_SubsurfaceDepositMarker",
-		deposit_type = "_PreciousMetals",
-		build_pos = 4,
-		display_name = "Rare Metals Deposit",
-		description = "Place a subsurface Rare Metals deposit.",
-	})
-
-	if rawget(_G, "SubsurfaceDepositPreciousMinerals") then
-		AddTemplate(SubsurfaceDepositPreciousMinerals, {
-			class = "MPT_SubsurfaceDepositMarker",
-			deposit_type = "_PreciousMinerals",
-			build_pos = 5,
-			display_name = "Exotic Minerals Deposit",
-			description = "Place a subsurface Exotic Minerals deposit.",
-		})
+	-- A few marker implementations keep/manage the resulting deposit
+	-- internally and return nil. If the marker survived, still count this as
+	-- a successful native placement attempt and let the game own it.
+	if IsValid(marker) then
+		RevealObject(marker)
+		Log("Placed resource marker: " .. tostring(tool.resource))
+		return true
 	end
 
-	-- Anomalies
-	AddTemplate(SubsurfaceAnomaly_complete or SubsurfaceAnomaly, {
-		class = "MPT_SubsurfaceAnomalyMarker",
-		deposit_type = "_Research",
-		build_pos = 10,
-		display_name = "Research Anomaly",
-		description = "Place an anomaly that grants research when analyzed.",
-		display_icon = "UI/Icons/Anomaly_Research.tga",
-	})
+	Log("Resource placement returned no deposit: " .. tostring(tool.resource))
+	return false
+end
 
-	AddTemplate(SubsurfaceAnomaly_unlock or SubsurfaceAnomaly, {
-		class = "MPT_SubsurfaceAnomalyMarker",
-		deposit_type = "_Tech",
-		build_pos = 11,
-		display_name = "Technology Anomaly",
-		description = "Place an anomaly that unlocks technology when analyzed.",
-		display_icon = "UI/Icons/Anomaly_Tech.tga",
-	})
-
-	AddTemplate(SubsurfaceAnomaly_breakthrough or SubsurfaceAnomaly, {
-		class = "MPT_SubsurfaceAnomalyMarker",
-		deposit_type = "_Breakthrough",
-		build_pos = 12,
-		display_name = "Breakthrough Anomaly",
-		description = "Place an anomaly that unlocks a Breakthrough when analyzed.",
-		display_icon = "UI/Icons/Anomaly_Breakthrough.tga",
-	})
-
-	AddTemplate(SubsurfaceAnomaly, {
-		class = "MPT_SubsurfaceAnomalyMarker",
-		deposit_type = "_Resources",
-		build_pos = 13,
-		display_name = "Resource Anomaly",
-		description = "Place an anomaly that grants resources when analyzed.",
-		display_icon = "UI/Icons/Anomaly_Event.tga",
-	})
-
-	-- Map effects
-	AddTemplate(BeautyEffectDeposit, {
-		class = "MPT_EffectDepositMarker",
-		deposit_type = "_Vista",
-		build_pos = 20,
-		display_name = "Vista",
-		description = "Place a Vista that boosts Comfort for nearby Domes.",
-		display_icon = "UI/Icons/Buildings/dome.tga",
-	})
-
-	AddTemplate(ResearchEffectDeposit, {
-		class = "MPT_EffectDepositMarker",
-		deposit_type = "_ResearchSite",
-		build_pos = 21,
-		display_name = "Research Site",
-		description = "Place a Research Site that boosts nearby research buildings.",
-		display_icon = "UI/Icons/Buildings/research.tga",
-	})
-
-	MPT_Log("Registered Map Placement templates")
-	if RefreshXBuildMenu then
-		RefreshXBuildMenu()
+local function PlaceAnomaly(tool, pos, map_id)
+	local marker = NewMarker("SubsurfaceAnomalyMarker", map_id)
+	if not IsValid(marker) then
+		Log("Could not create SubsurfaceAnomalyMarker")
+		return false
 	end
+
+	marker:SetPos(pos)
+	marker.sequence = "Static Dust Charge"
+	marker.sequence_list = "Anomalies"
+	marker.tech_action = tool.tech_action
+	marker.revealed = true
+
+	local deposit
+	if marker.PlaceDeposit then
+		deposit = marker:PlaceDeposit()
+	end
+
+	if IsValid(deposit) then
+		RevealObject(deposit)
+	else
+		-- The official anomaly example relies on PlaceDeposit and does not
+		-- require the return value, so do not treat nil as a hard failure.
+		RevealObject(marker)
+	end
+
+	Log("Placed anomaly: " .. tostring(tool.tech_action))
 	return true
 end
 
--- ClassesPostprocess is correct during normal startup. ModsReloaded and the
--- immediate call are important for Relaunched's in-game Mod Editor, where a
--- Code item can be reloaded after ClassesPostprocess has already happened.
-function OnMsg.ClassesPostprocess()
-	SetupBuildMenu()
+local function PlaceEffect(tool, pos, map_id)
+	local marker = NewMarker("EffectDepositMarker", map_id)
+	if not IsValid(marker) then
+		Log("Could not create EffectDepositMarker")
+		return false
+	end
+
+	marker:SetPos(pos)
+	marker.deposit_type = tool.deposit_type
+	marker.revealed = true
+
+	local spawned
+	if marker.SpawnDeposit then
+		spawned = marker:SpawnDeposit()
+	end
+
+	local deposit
+	if marker.PlaceDeposit then
+		deposit = marker:PlaceDeposit()
+	end
+	deposit = deposit or spawned
+
+	if IsValid(deposit) then
+		RevealObject(deposit)
+		Log("Placed map effect: " .. tostring(tool.deposit_type))
+		return true
+	end
+
+	if IsValid(marker) then
+		RevealObject(marker)
+		Log("Placed map effect marker: " .. tostring(tool.deposit_type))
+		return true
+	end
+
+	Log("Effect placement returned no object: " .. tostring(tool.deposit_type))
+	return false
 end
 
-function OnMsg.ModsReloaded()
-	SetupBuildMenu()
+local function ConvertPlacementBuilding(obj)
+	if not IsValid(obj) then
+		return
+	end
+
+	local template = obj.template_name
+	if not template or template == "" then
+		template = obj.fx_actor_class
+	end
+
+	local tool = tools[template]
+	if not tool then
+		Log("Unknown placement template. template_name=" ..
+			tostring(obj.template_name) .. " fx_actor_class=" ..
+			tostring(obj.fx_actor_class))
+		DoneObject(obj)
+		return
+	end
+
+	local pos = obj:GetVisualPos()
+	local map_id = GetMapId(obj)
+
+	Log("Converting placement tool: " .. tostring(template))
+
+	if tool.kind == "resource" then
+		PlaceResource(tool, pos, map_id)
+	elseif tool.kind == "anomaly" then
+		PlaceAnomaly(tool, pos, map_id)
+	elseif tool.kind == "effect" then
+		PlaceEffect(tool, pos, map_id)
+	end
+
+	if IsValid(obj) then
+		DoneObject(obj)
+	end
+end
+
+DefineClass.MPT_PlacementBuilding = {
+	__parents = { "Building" },
+}
+
+function MPT_PlacementBuilding:GameInit()
+	-- Let the ordinary Building class finish its normal instant-build setup,
+	-- then convert this temporary object on the next game-time tick.
+	Building.GameInit(self)
+
+	CreateGameTimeThread(function(obj)
+		Sleep(1)
+		ConvertPlacementBuilding(obj)
+	end, self)
+end
+
+function OnMsg.ClassesBuilt()
+	Log("MPT_PlacementBuilding finalized")
 end
 
 function OnMsg.CityStart()
-	SetupBuildMenu()
+	Log("V3 loaded in colony")
 end
 
 function OnMsg.LoadGame()
-	SetupBuildMenu()
+	Log("V3 loaded with save")
 end
 
--- Try immediately as well. The Modding Guide guarantees game/DLC Lua is loaded
--- before mod Code items, so the preset tables normally exist at this point.
-SetupBuildMenu()
-
-MPT_Log("Script loaded")
+Log("V3 code loaded")

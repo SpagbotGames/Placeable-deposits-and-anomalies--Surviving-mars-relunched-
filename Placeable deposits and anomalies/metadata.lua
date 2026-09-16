@@ -2,8 +2,8 @@ return PlaceObj('ModDef', {
 	'title', "Placeable deposits and anomalies",
 	'id', "Mde5tLv",
 	'author', "Spagbotgames",
-	'version_minor', 2,
-	'version', 3,
+	'version_minor', 3,
+	'version', 4,
 	'lua_revision', 350453,
 	'saved_with_revision', 396349,
 	'code', {

@@ -1,26 +1,31 @@
-PLACEABLE DEPOSITS AND ANOMALIES - V2 TEST
+PLACEABLE DEPOSITS AND ANOMALIES - V3 TEST
 
-1. Replace your existing "Placeable deposits and anomalies" mod folder with this one.
-2. Start/restart Surviving Mars: Relaunched.
-3. Enable the mod in Mod Manager.
-4. Load a colony.
-5. Open Build Menu > Storages.
-6. Look for "Map Placement" near the end of the Storages category.
+V3 removes the runtime-created BuildingTemplate system that caused:
+CommonLua/Classes/Composite.lua:41 - attempt to call a nil value (field 'new')
 
-If you already have the Mod Editor open:
-- Reload the mod, or close/reopen the editor.
-- This V2 also registers on ModsReloaded, so a full game restart should normally
-  not be required, but a restart is the cleanest test.
+The build menu now comes from real ModItemBuildMenuSubcategory and
+ModItemBuildingTemplate entries in items.lua.
 
-FIRST TESTS
-- Water Deposit
-- Vista
-- Research Site
-- Research Anomaly
+INSTALL:
+1. Exit Surviving Mars: Relaunched completely.
+2. Replace the old "Placeable deposits and anomalies" mod folder with this one.
+3. Start the game.
+4. Enable the mod.
+5. Load a colony.
+6. Open: Storages > Map Placement
 
-The log should contain lines beginning with:
-[Placeable deposits and anomalies]
+TEST IN THIS ORDER:
+1. Does Map Placement appear?
+2. Does Water Deposit appear inside it?
+3. Place Water Deposit on clear terrain.
+4. Place Research Anomaly.
+5. Place Vista.
+6. Place Research Site.
 
-If the category still does not appear, send a screenshot of the Mod Editor log
-right after reloading this version. The new diagnostic log lines will tell us
-whether registration ran and which game object/preset was missing.
+LOGS TO LOOK FOR:
+[Placeable deposits and anomalies] V3 code loaded
+[Placeable deposits and anomalies] MPT_PlacementBuilding finalized
+[Placeable deposits and anomalies] Converting placement tool: MPT_Place_Water
+[Placeable deposits and anomalies] Placed resource deposit: Water
+
+If an item errors, send a screenshot of the exact Messages/Error area.
