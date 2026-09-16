@@ -1,50 +1,56 @@
--- Placeable deposits and anomalies - V3
+-- Placeable deposits and anomalies - V4
 -- Surviving Mars: Relaunched
 --
--- IMPORTANT:
--- The build-menu entries themselves are real ModItemBuildingTemplate objects
--- defined in items.lua.  This file only provides the Building-derived class
--- that those templates instantiate and converts it into the requested map
--- object after placement.
+-- V4 follows the current Relaunched sample-mod layout:
+--   * items.lua only contains the Code item + ModItemRef entries.
+--   * Building Template presets live in Data/BuildingTemplate/.
+--   * Generated buildable classes live in Code/BuildingTemplate/.
+--
+-- The buildable objects are zero-cost, instant-build placement proxies.
+-- Immediately after one is placed, it creates the requested native map
+-- marker/deposit/anomaly/effect at that position and removes itself.
 
 local MOD_TAG = "[Placeable deposits and anomalies] "
-local DEPOSIT_AMOUNT = 5000 * (const.ResourceScale or 1000)
+local CATEGORY_ID = "MPT_MapPlacement"
 
-local function Log(text)
+local function Log(msg)
 	if ModLog then
-		ModLog(MOD_TAG .. tostring(text))
+		ModLog(MOD_TAG .. tostring(msg))
 	end
 end
 
-local tools = {
+local function SafeCall(label, fn, ...)
+	local ok, a, b, c = pcall(fn, ...)
+	if not ok then
+		Log(label .. " ERROR: " .. tostring(a))
+		return false
+	end
+	return true, a, b, c
+end
+
+local RESOURCE_SCALE = (const and const.ResourceScale) or 1000
+local DEPOSIT_AMOUNT = 5000 * RESOURCE_SCALE
+
+local definitions = {
 	MPT_Place_Concrete = {
-		kind = "resource",
-		marker = "TerrainDepositMarker",
+		kind = "terrain_resource",
 		resource = "Concrete",
 	},
 	MPT_Place_Water = {
-		kind = "resource",
-		marker = "SubsurfaceDepositMarker",
+		kind = "subsurface_resource",
 		resource = "Water",
-		depth_layer = 1,
 	},
 	MPT_Place_Metals = {
-		kind = "resource",
-		marker = "SubsurfaceDepositMarker",
+		kind = "subsurface_resource",
 		resource = "Metals",
-		depth_layer = 1,
 	},
 	MPT_Place_RareMetals = {
-		kind = "resource",
-		marker = "SubsurfaceDepositMarker",
+		kind = "subsurface_resource",
 		resource = "PreciousMetals",
-		depth_layer = 1,
 	},
 	MPT_Place_ExoticMinerals = {
-		kind = "resource",
-		marker = "SubsurfaceDepositMarker",
+		kind = "subsurface_resource",
 		resource = "PreciousMinerals",
-		depth_layer = 1,
 	},
 
 	MPT_Place_ResearchAnomaly = {
@@ -74,197 +80,198 @@ local tools = {
 	},
 }
 
-local function RevealObject(obj)
-	if not IsValid(obj) then
-		return
-	end
-	if obj.SetRevealed then
-		obj:SetRevealed(true)
-	else
-		obj.revealed = true
-	end
-	if obj.PickVisibilityState then
-		obj:PickVisibilityState()
-	end
-end
-
-local function GetMapId(obj)
-	-- Placement happens on the active map.  GetMapID is used when available
-	-- so this also behaves correctly on non-surface maps.
+local function CurrentMapId(obj)
 	if obj and obj.GetMapID then
-		local id = obj:GetMapID()
-		if id then
+		local ok, id = pcall(obj.GetMapID, obj)
+		if ok and id then
 			return id
 		end
 	end
 	return ActiveMapID
 end
 
-local function NewMarker(class_name, map_id)
-	if not class_name then
-		return
-	end
-	if g_Classes and not g_Classes[class_name] then
-		Log("Missing game class: " .. class_name)
-		return
-	end
-
+local function NewOnMap(class_name, map_id)
 	if PlaceObjectIn and map_id then
-		return PlaceObjectIn(class_name, map_id)
+		local ok, obj = pcall(PlaceObjectIn, class_name, map_id)
+		if ok and obj then
+			return obj
+		end
 	end
 	if PlaceObject then
-		return PlaceObject(class_name)
+		local ok, obj = pcall(PlaceObject, class_name)
+		if ok then
+			return obj
+		end
 	end
 end
 
-local function PlaceResource(tool, pos, map_id)
-	local marker = NewMarker(tool.marker, map_id)
+local function Reveal(obj)
+	if not IsValid(obj) then
+		return
+	end
+
+	if obj.SetRevealed then
+		pcall(obj.SetRevealed, obj, true)
+	else
+		obj.revealed = true
+	end
+
+	if obj.PickVisibilityState then
+		pcall(obj.PickVisibilityState, obj)
+	end
+end
+
+local function PlaceResource(pos, map_id, resource, terrain_resource)
+	local marker_class = terrain_resource and "TerrainDepositMarker" or "SubsurfaceDepositMarker"
+	local marker = NewOnMap(marker_class, map_id)
+
 	if not IsValid(marker) then
-		Log("Could not create " .. tostring(tool.marker))
-		return false
+		Log("Could not create " .. marker_class)
+		return
 	end
 
 	marker:SetPos(pos)
-	marker.resource = tool.resource
+	marker.resource = resource
 	marker.grade = "Very High"
 	marker.max_amount = DEPOSIT_AMOUNT
 	marker.revealed = true
 
-	if tool.depth_layer then
-		marker.depth_layer = tool.depth_layer
+	if not terrain_resource then
+		marker.depth_layer = 1
 	end
 
-	-- This follows the native marker workflow used by the game.  Some marker
-	-- revisions need SpawnDeposit before PlaceDeposit, while others can use
-	-- PlaceDeposit directly, so support both.
-	local spawned
+	-- This is the native marker sequence used by the game/modding examples:
+	-- SpawnDeposit -> PlaceDeposit -> PickVisibilityState.
 	if marker.SpawnDeposit then
-		spawned = marker:SpawnDeposit()
+		local ok, err = pcall(marker.SpawnDeposit, marker)
+		if not ok then
+			Log(marker_class .. ":SpawnDeposit ERROR: " .. tostring(err))
+		end
 	end
 
 	local deposit
 	if marker.PlaceDeposit then
-		deposit = marker:PlaceDeposit()
-	end
-	deposit = deposit or spawned
-
-	if IsValid(deposit) then
-		RevealObject(deposit)
-		Log("Placed resource deposit: " .. tostring(tool.resource))
-		return true
+		local ok, result = pcall(marker.PlaceDeposit, marker)
+		if ok then
+			deposit = result
+		else
+			Log(marker_class .. ":PlaceDeposit ERROR: " .. tostring(result))
+		end
 	end
 
-	-- A few marker implementations keep/manage the resulting deposit
-	-- internally and return nil. If the marker survived, still count this as
-	-- a successful native placement attempt and let the game own it.
-	if IsValid(marker) then
-		RevealObject(marker)
-		Log("Placed resource marker: " .. tostring(tool.resource))
-		return true
-	end
-
-	Log("Resource placement returned no deposit: " .. tostring(tool.resource))
-	return false
+	Reveal(deposit)
+	Reveal(marker)
+	Log("Placement attempted: " .. tostring(resource))
 end
 
-local function PlaceAnomaly(tool, pos, map_id)
-	local marker = NewMarker("SubsurfaceAnomalyMarker", map_id)
+local function PlaceAnomaly(pos, map_id, tech_action)
+	local marker = NewOnMap("SubsurfaceAnomalyMarker", map_id)
+
 	if not IsValid(marker) then
 		Log("Could not create SubsurfaceAnomalyMarker")
-		return false
+		return
 	end
 
 	marker:SetPos(pos)
 	marker.sequence = "Static Dust Charge"
 	marker.sequence_list = "Anomalies"
-	marker.tech_action = tool.tech_action
+	marker.tech_action = tech_action
 	marker.revealed = true
 
-	local deposit
 	if marker.PlaceDeposit then
-		deposit = marker:PlaceDeposit()
-	end
-
-	if IsValid(deposit) then
-		RevealObject(deposit)
+		local ok, result = pcall(marker.PlaceDeposit, marker)
+		if not ok then
+			Log("SubsurfaceAnomalyMarker:PlaceDeposit ERROR: " .. tostring(result))
+		else
+			Reveal(result)
+		end
 	else
-		-- The official anomaly example relies on PlaceDeposit and does not
-		-- require the return value, so do not treat nil as a hard failure.
-		RevealObject(marker)
+		Log("SubsurfaceAnomalyMarker has no PlaceDeposit method")
 	end
 
-	Log("Placed anomaly: " .. tostring(tool.tech_action))
-	return true
+	Reveal(marker)
+	Log("Placement attempted: anomaly/" .. tostring(tech_action))
 end
 
-local function PlaceEffect(tool, pos, map_id)
-	local marker = NewMarker("EffectDepositMarker", map_id)
+local function PlaceEffect(pos, map_id, deposit_type)
+	local marker = NewOnMap("EffectDepositMarker", map_id)
+
 	if not IsValid(marker) then
 		Log("Could not create EffectDepositMarker")
-		return false
+		return
 	end
 
 	marker:SetPos(pos)
-	marker.deposit_type = tool.deposit_type
+	marker.deposit_type = deposit_type
 	marker.revealed = true
 
-	local spawned
 	if marker.SpawnDeposit then
-		spawned = marker:SpawnDeposit()
+		local ok, err = pcall(marker.SpawnDeposit, marker)
+		if not ok then
+			Log("EffectDepositMarker:SpawnDeposit ERROR: " .. tostring(err))
+		end
 	end
 
 	local deposit
 	if marker.PlaceDeposit then
-		deposit = marker:PlaceDeposit()
-	end
-	deposit = deposit or spawned
-
-	if IsValid(deposit) then
-		RevealObject(deposit)
-		Log("Placed map effect: " .. tostring(tool.deposit_type))
-		return true
+		local ok, result = pcall(marker.PlaceDeposit, marker)
+		if ok then
+			deposit = result
+		else
+			Log("EffectDepositMarker:PlaceDeposit ERROR: " .. tostring(result))
+		end
 	end
 
-	if IsValid(marker) then
-		RevealObject(marker)
-		Log("Placed map effect marker: " .. tostring(tool.deposit_type))
-		return true
-	end
-
-	Log("Effect placement returned no object: " .. tostring(tool.deposit_type))
-	return false
+	Reveal(deposit)
+	Reveal(marker)
+	Log("Placement attempted: " .. tostring(deposit_type))
 end
 
-local function ConvertPlacementBuilding(obj)
+local function FindDefinition(obj)
+	local candidates = {
+		obj.class,
+		obj.template_name,
+		obj.fx_actor_class,
+	}
+
+	for _, id in ipairs(candidates) do
+		if id and definitions[id] then
+			return id, definitions[id]
+		end
+	end
+end
+
+local function ConvertProxy(obj)
 	if not IsValid(obj) then
 		return
 	end
 
-	local template = obj.template_name
-	if not template or template == "" then
-		template = obj.fx_actor_class
-	end
-
-	local tool = tools[template]
-	if not tool then
-		Log("Unknown placement template. template_name=" ..
-			tostring(obj.template_name) .. " fx_actor_class=" ..
-			tostring(obj.fx_actor_class))
-		DoneObject(obj)
+	local id, def = FindDefinition(obj)
+	if not def then
+		Log(
+			"Unknown placement proxy. class=" .. tostring(obj.class) ..
+			" template_name=" .. tostring(obj.template_name) ..
+			" fx_actor_class=" .. tostring(obj.fx_actor_class)
+		)
+		if IsValid(obj) then
+			DoneObject(obj)
+		end
 		return
 	end
 
 	local pos = obj:GetVisualPos()
-	local map_id = GetMapId(obj)
+	local map_id = CurrentMapId(obj)
 
-	Log("Converting placement tool: " .. tostring(template))
+	Log("Converting " .. tostring(id))
 
-	if tool.kind == "resource" then
-		PlaceResource(tool, pos, map_id)
-	elseif tool.kind == "anomaly" then
-		PlaceAnomaly(tool, pos, map_id)
-	elseif tool.kind == "effect" then
-		PlaceEffect(tool, pos, map_id)
+	if def.kind == "terrain_resource" then
+		PlaceResource(pos, map_id, def.resource, true)
+	elseif def.kind == "subsurface_resource" then
+		PlaceResource(pos, map_id, def.resource, false)
+	elseif def.kind == "anomaly" then
+		PlaceAnomaly(pos, map_id, def.tech_action)
+	elseif def.kind == "effect" then
+		PlaceEffect(pos, map_id, def.deposit_type)
 	end
 
 	if IsValid(obj) then
@@ -272,31 +279,73 @@ local function ConvertPlacementBuilding(obj)
 	end
 end
 
+-- Same idea as the bundled Cemetery sample: custom gameplay class derives
+-- from Building, while each Building Template generates a child class.
 DefineClass.MPT_PlacementBuilding = {
 	__parents = { "Building" },
 }
 
 function MPT_PlacementBuilding:GameInit()
-	-- Let the ordinary Building class finish its normal instant-build setup,
-	-- then convert this temporary object on the next game-time tick.
-	Building.GameInit(self)
+	local obj = self
 
-	CreateGameTimeThread(function(obj)
-		Sleep(1)
-		ConvertPlacementBuilding(obj)
-	end, self)
+	-- Delay conversion until the instant-build placement has completely
+	-- finished creating the object.
+	if CreateGameTimeThread then
+		CreateGameTimeThread(function()
+			Sleep(1)
+			ConvertProxy(obj)
+		end)
+	elseif DelayedCall then
+		DelayedCall(0, ConvertProxy, obj)
+	else
+		ConvertProxy(obj)
+	end
 end
 
-function OnMsg.ClassesBuilt()
-	Log("MPT_PlacementBuilding finalized")
+local function RegisterCategory()
+	if not BuildMenuSubcategories then
+		Log("BuildMenuSubcategories is not available yet")
+		return false
+	end
+
+	if not BuildMenuSubcategories[CATEGORY_ID] then
+		PlaceObj("BuildMenuSubcategory", {
+			build_pos = 99,
+			category = "Storages",
+			description = T(0, "Place deposits, anomalies, Vistas, and Research Sites directly on the map."),
+			display_name = T(0, "Map Placement"),
+			group = "Default",
+			icon = "UI/Icons/Buildings/res_all.tga",
+			category_name = CATEGORY_ID,
+			id = CATEGORY_ID,
+		})
+		Log("Registered Map Placement build-menu category")
+	else
+		Log("Map Placement build-menu category already exists")
+	end
+
+	if RefreshXBuildMenu then
+		pcall(RefreshXBuildMenu)
+	end
+
+	return true
+end
+
+function OnMsg.ClassesPostprocess()
+	RegisterCategory()
+end
+
+function OnMsg.ModsReloaded()
+	RegisterCategory()
 end
 
 function OnMsg.CityStart()
-	Log("V3 loaded in colony")
+	RegisterCategory()
 end
 
 function OnMsg.LoadGame()
-	Log("V3 loaded with save")
+	RegisterCategory()
 end
 
-Log("V3 code loaded")
+RegisterCategory()
+Log("V4 code loaded")
