@@ -1,0 +1,5 @@
+V8 changes:
+- Removed the extra blue hex background from menu icons.
+- Rebuilt icons as smaller transparent symbol-only icons so the game's own hotbar hex background shows through.
+- Adjusted symbol orientation and scale to more closely match the on-map marker icons.
+- Concrete remains 2500.
